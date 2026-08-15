@@ -1,0 +1,10 @@
+confluent_kafka
+requests
+colorama
+flask
+flask_socketio
+eventlet
+python-socketio
+python-engineio
+reportlab
+cryptography

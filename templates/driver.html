@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>EV Driver</title>
+        <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                padding: 20px;
+            }
+
+            .container {
+                max-width: 900px;
+                margin: 0 auto;
+            }
+
+            .card {
+                background: white;
+                border-radius: 12px;
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+                margin-bottom: 20px;
+                overflow: hidden;
+            }
+
+            .card-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 20px;
+                font-size: 1.2em;
+                font-weight: bold;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+
+            .card-body {
+                padding: 20px;
+            }
+
+            .status-box {
+                background: #f5f5f5;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 15px;
+            }
+
+            .status-label {
+                font-size: 0.85em;
+                color: #666;
+                margin-bottom: 5px;
+            }
+
+            .status-value {
+                font-size: 1.3em;
+                font-weight: bold;
+                color: #333;
+            }
+
+            .status-badge {
+                display: inline-block;
+                padding: 6px 12px;
+                border-radius: 20px;
+                font-weight: bold;
+                font-size: 0.85em;
+            }
+
+            .status-badge.libre {
+                background: #c8e6c9;
+                color: #2e7d32;
+            }
+
+            .status-badge.esperando {
+                background: #fff9c4;
+                color: #f57f17;
+            }
+
+            .status-badge.suministrando {
+                background: #c8e6c9;
+                color: #0f5213;
+            }
+
+            .status-badge.offline {
+                background: #ffccbc;
+                color: #d84315;
+            }
+
+            .grid-2 {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 15px;
+                margin-bottom: 15px;
+            }
+
+            .progress-bar {
+                width: 100%;
+                height: 24px;
+                background: #e0e0e0;
+                border-radius: 10px;
+                overflow: hidden;
+                margin: 10px 0;
+                border: 1px solid #ccc;
+            }
+
+            .progress-fill {
+                height: 100%;
+                background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+                width: 0%;
+                transition: width 0.3s ease;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-weight: bold;
+                font-size: 0.8em;
+            }
+
+            .cp-list {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+                gap: 12px;
+                margin-bottom: 15px;
+            }
+
+            .cp-item {
+                background: #f9f9f9;
+                border: 2px solid #e0e0e0;
+                border-radius: 8px;
+                padding: 12px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+            }
+
+            .cp-item:hover {
+                border-color: #667eea;
+                box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+            }
+
+            .cp-item.selected {
+                background: #667eea;
+                color: white;
+                border-color: #667eea;
+            }
+
+            .cp-id {
+                font-weight: bold;
+                font-size: 0.95em;
+                margin-bottom: 5px;
+            }
+
+            .cp-info {
+                font-size: 0.8em;
+                opacity: 0.8;
+            }
+
+            .input-group {
+                display: grid;
+                grid-template-columns: 1fr auto;
+                gap: 10px;
+                margin-bottom: 15px;
+            }
+
+            input {
+                padding: 10px;
+                border: 1px solid #ddd;
+                border-radius: 6px;
+                font-size: 1em;
+            }
+
+            input:focus {
+                outline: none;
+                border-color: #667eea;
+                box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            }
+
+            button {
+                padding: 10px 20px;
+                border: none;
+                border-radius: 6px;
+                font-weight: bold;
+                cursor: pointer;
+                transition: all 0.3s ease;
+            }
+
+            button:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            }
+
+            button:active {
+                transform: translateY(0);
+            }
+
+            .btn-solicitar {
+                background: #667eea;
+                color: white;
+            }
+
+            .btn-solicitar:hover {
+                background: #5568d3;
+            }
+
+            .btn-solicitar:disabled {
+                background: #ccc;
+                cursor: not-allowed;
+            }
+
+            .modal-backdrop {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 1000;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .modal-backdrop.active {
+                display: flex;
+            }
+
+            .modal-box {
+                background: white;
+                padding: 30px;
+                border-radius: 12px;
+                box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+                max-width: 500px;
+                text-align: center;
+            }
+
+            .modal-title {
+                font-size: 1.4em;
+                font-weight: bold;
+                margin-bottom: 15px;
+            }
+
+            .modal-message {
+                font-size: 1em;
+                color: #666;
+                margin-bottom: 25px;
+                line-height: 1.6;
+            }
+
+            .modal-data {
+                background: #f5f5f5;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+                text-align: left;
+            }
+
+            .modal-data-row {
+                display: flex;
+                justify-content: space-between;
+                padding: 8px 0;
+                border-bottom: 1px solid #e0e0e0;
+            }
+
+            .modal-data-row:last-child {
+                border-bottom: none;
+            }
+
+            .modal-data-label {
+                font-weight: bold;
+                color: #666;
+            }
+
+            .modal-data-value {
+                color: #333;
+            }
+
+            button.modal-close {
+                background: #667eea;
+                color: white;
+                width: 100%;
+            }
+
+            button.modal-close:hover {
+                background: #5568d3;
+            }
+
+            .stats-grid {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 15px;
+            }
+
+            .stat-item {
+                background: #f0f0f0;
+                padding: 15px;
+                border-radius: 8px;
+                text-align: center;
+            }
+
+            .stat-label {
+                font-size: 0.85em;
+                color: #666;
+                margin-bottom: 5px;
+            }
+
+            .stat-value {
+                font-size: 1.6em;
+                font-weight: bold;
+                color: #333;
+            }
+
+            @media (max-width: 600px) {
+                .grid-2,
+                .stats-grid {
+                    grid-template-columns: 1fr;
+                }
+
+                .card-header {
+                    flex-direction: column;
+                    gap: 10px;
+                    text-align: center;
+                }
+
+                .cp-list {
+                    grid-template-columns: 1fr;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="alert-modal" class="modal-backdrop">
+                <div class="modal-box">
+                    <div class="modal-title" id="alert-title">Alert</div>
+                    <div class="modal-message" id="alert-message">Mensaje</div>
+                    <div id="alert-data" class="modal-data" style="display: none;"></div>
+                    <button class="modal-close" onclick="cerrarAlerta()">Entendido</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    👤 Driver {{ driver_id }}
+                    <span class="status-badge libre" id="driver-estado">LIBRE</span>
+                </div>
+                <div class="card-body">
+                    <div class="grid-2">
+                        <div class="status-box">
+                            <div class="status-label">Estado Actual</div>
+                            <div class="status-value" id="driver-status">Libre</div>
+                        </div>
+                        <div class="status-box">
+                            <div class="status-label">CP Actual</div>
+                            <div class="status-value" id="driver-cp">-</div>
+                        </div>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-label">Energía Total (kWh)</div>
+                            <div class="stat-value" id="total-kwh">0.00</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Importe Total (€)</div>
+                            <div class="stat-value" id="total-importe">0.00</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" id="supply-card" style="display: none;">
+                <div class="card-header">⚡ Suministro en Progreso</div>
+                <div class="card-body">
+                    <div class="grid-2">
+                        <div class="status-box">
+                            <div class="status-label">Energía Actual (kWh)</div>
+                            <div class="status-value" id="current-kwh">0.00</div>
+                        </div>
+                        <div class="status-box">
+                            <div class="status-label">Objetivo (kWh)</div>
+                            <div class="status-value" id="target-kwh">0</div>
+                        </div>
+                    </div>
+
+                    <div class="status-box">
+                        <div class="status-label">Importe Actual (€)</div>
+                        <div class="status-value" id="current-importe">0.00</div>
+                    </div>
+
+                    <div>
+                        <strong>Progreso (<span id="progress-pct">0</span>%)</strong>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progress-fill"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">🔌 Puntos de Carga Disponibles</div>
+                <div class="card-body">
+                    <div class="cp-list" id="cp-list">
+                        <div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #999;">
+                            Cargando puntos de carga...
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <input type="number" id="kwh-input" placeholder="kWh a solicitar" min="1" max="100" value="10">
+                        <button class="btn-solicitar" id="btn-solicitar" onclick="solicitarRecarga()" disabled>
+                            ⚡ Solicitar
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">✅ Servicios Completados</div>
+                <div class="card-body">
+                    <div class="status-box">
+                        <div class="status-label">Total de Servicios</div>
+                        <div class="status-value" id="servicios-completados">0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            const socket = io();
+            let driverState = {};
+            let cpStates = {};
+            let cpSeleccionado = null;
+
+            // Actualizar la interfaz de usuario
+            function actualizarUI() {
+                const estado = driverState.estado || 'libre';
+                const badge = document.getElementById('driver-estado');
+                badge.className = `status-badge ${estado}`;
+                badge.textContent = estado.toUpperCase();
+                document.getElementById('driver-status').textContent = estado.charAt(0).toUpperCase() + estado.slice(1);
+                document.getElementById('driver-cp').textContent = driverState.cp_actual || '-';
+                document.getElementById('total-kwh').textContent = (driverState.kwh_totales || 0).toFixed(2);
+                document.getElementById('total-importe').textContent = (driverState.importe_total || 0).toFixed(2);
+                document.getElementById('servicios-completados').textContent = driverState.servicios_completados || 0;
+                const supplyCard = document.getElementById('supply-card');
+                const btnSolicitar = document.getElementById('btn-solicitar');
+
+                if (estado === 'suministrando') {
+                    supplyCard.style.display = 'block';
+                    btnSolicitar.disabled = true;
+                    const kwhActual = (driverState.kwh_entregado || 0).toFixed(2);
+                    const kwhObjetivo = (driverState.kwh_solicitado || 0).toFixed(0);
+                    const importe = (driverState.importe_eur || 0).toFixed(2);
+                    const progreso = driverState.porcentaje_suministro || 0;
+                    document.getElementById('current-kwh').textContent = kwhActual;
+                    document.getElementById('target-kwh').textContent = kwhObjetivo;
+                    document.getElementById('current-importe').textContent = importe;
+                    document.getElementById('progress-pct').textContent = Math.round(progreso);
+                    const fillEl = document.getElementById('progress-fill');
+                    fillEl.style.width = progreso + '%';
+                    fillEl.textContent = Math.round(progreso) + '%';
+                }
+                
+                else {
+                    supplyCard.style.display = 'none';
+                    btnSolicitar.disabled = cpSeleccionado === null;
+                    document.getElementById('progress-fill').style.width = '0%';
+                    document.getElementById('progress-fill').textContent = '';
+                }
+            }
+
+            // Actualizar la lista de CPs disponibles
+            function actualizarCPs() {
+                const list = document.getElementById('cp-list');
+                
+                if (Object.keys(cpStates).length === 0) {
+                    list.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #999;">No hay CPs disponibles</div>';
+                    return;
+                }
+                list.innerHTML = '';
+                Object.values(cpStates).forEach(cp => {
+                    if (cp.weather_blocked === true) {
+                        return;
+                    }
+                    const div = document.createElement('div');
+                    div.className = `cp-item ${cpSeleccionado === cp.cp_id ? 'selected' : ''}`;
+                    div.onclick = () => seleccionarCP(cp.cp_id);
+                    div.innerHTML = `
+                        <div class="cp-id">${cp.cp_id}</div>
+                        <div class="cp-info">${cp.ubicacion || 'N/A'}</div>
+                    `;
+                    list.appendChild(div);
+                });
+            }
+
+            // Seleccionar un CP de la lista
+            function seleccionarCP(cpId) {
+                cpSeleccionado = cpId;
+                document.querySelectorAll('.cp-item').forEach(el => {
+                    el.classList.remove('selected');
+                });
+                event.target.closest('.cp-item').classList.add('selected');
+                document.getElementById('btn-solicitar').disabled = false;
+            }
+
+            // Solicitar recarga al CP seleccionado
+            function solicitarRecarga() {
+                if (!cpSeleccionado) return;
+                const kwh = parseFloat(document.getElementById('kwh-input').value) || 10;
+                socket.emit('select_cp', {
+                    cp_id: cpSeleccionado,
+                    kwh: kwh
+                });
+                document.getElementById('btn-solicitar').disabled = true;
+            }
+
+            // Mostrar una alerta modal
+            function mostrarAlerta(data) {
+                document.getElementById('alert-title').textContent = data.title || 'Alerta';
+                document.getElementById('alert-message').textContent = data.message || '';
+                const alertData = document.getElementById('alert-data');
+
+                if (data.data) {
+                    alertData.style.display = 'block';
+                    alertData.innerHTML = `
+                        <div class="modal-data-row">
+                            <span class="modal-data-label">CP ID:</span>
+                            <span class="modal-data-value">${data.data.cp_id || '-'}</span>
+                        </div>
+                        <div class="modal-data-row">
+                            <span class="modal-data-label">Energía:</span>
+                            <span class="modal-data-value">${(data.data.delivered_kwh || 0).toFixed(3)} kWh</span>
+                        </div>
+                        <div class="modal-data-row">
+                            <span class="modal-data-label">Importe:</span>
+                            <span class="modal-data-value">${(data.data.importe_eur || 0).toFixed(2)}€</span>
+                        </div>
+                    `;
+                }
+
+                else
+                    alertData.style.display = 'none';
+                document.getElementById('alert-modal').classList.add('active');
+            }
+
+            // Cerrar la alerta
+            function cerrarAlerta() {
+                document.getElementById('alert-modal').classList.remove('active');
+            }
+
+            socket.on('connect', () => {
+                console.log('✅ Conectado al servidor');
+                fetch('/api/driver_state')
+                    .then(r => r.json())
+                    .then(data => {
+                        driverState = data;
+                        actualizarUI();
+                    })
+                    .catch(e => console.error('Error:', e));
+            });
+
+            socket.on('driver_state', (data) => {
+                driverState = data;
+                actualizarUI();
+            });
+
+            socket.on('cp_states', (data) => {
+                cpStates = data;
+                actualizarCPs();
+            });
+
+            socket.on('supply_progress', (data) => {
+                driverState.kwh_entregado = data.energia;
+                driverState.importe_eur = data.importe;
+                driverState.porcentaje_suministro = data.porcentaje;
+                actualizarUI();
+            });
+
+            socket.on('alert', (data) => {
+                mostrarAlerta(data);
+            });
+
+            setInterval(() => {
+                fetch('/api/driver_state')
+                    .then(r => r.json())
+                    .then(data => {
+                        driverState = data;
+                        actualizarUI();
+                    })
+                    .catch(e => console.error('Error:', e));
+            }, 500);
+
+            setInterval(() => {
+                fetch('/api/cps')
+                    .then(r => r.json())
+                    .then(data => {
+                        cpStates = data.cps || {};
+                        actualizarCPs();
+                    })
+                    .catch(e => console.error('Error:', e));
+            }, 1000);
+        </script>
+    </body>
+</html>

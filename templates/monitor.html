@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EV_CP_Monitor {{ cp_id }}</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: #1f2937;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+    }
+    .container {
+      width: 100%;
+      max-width: 520px;
+      background: white;
+      border-radius: 18px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+      padding: 24px;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      border-bottom: 2px solid #e5e7eb;
+      padding-bottom: 12px;
+    }
+    h1 { margin: 0; font-size: 1.6rem; color: #4338ca; }
+    .pill {
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: white;
+    }
+    .ok { background: #22c55e; }
+    .warn { background: #f59e0b; }
+    .bad { background: #ef4444; }
+    .grid { display: flex; flex-direction: column; gap: 12px; }
+    .card {
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .card h2 { margin: 0 0 10px 0; font-size: 1.05rem; color: #4338ca; }
+    .item { display: flex; justify-content: space-between; align-items: center; margin: 6px 0; }
+    .item .label { color: #6b7280; font-size: 0.9rem; }
+    .item .value { font-weight: 700; color: #111827; }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.2s ease;
+    }
+    button:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(102, 126, 234, 0.35); }
+    button:disabled { opacity: 0.6; cursor: not-allowed; box-shadow: none; }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid #d1d5db;
+      background: white;
+      color: #111827;
+      margin-top: 6px;
+    }
+    .muted { color: #6b7280; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <div class="muted">Monitor CP</div>
+        <h1>{{ cp_id }}</h1>
+      </div>
+      <div id="status-pill" class="pill warn">Cargando...</div>
+    </header>
+
+    <div class="grid">
+      <div class="card" id="card-registro">
+        <h2>Registro en Registry</h2>
+        <label class="label">Contraseña del CP</label>
+        <input type="password" id="pwd" placeholder="Introduce la contraseña" />
+        <div class="actions">
+          <button id="btn-registry">Registrar CP en Registry</button>
+        </div>
+        <div id="registry-msg" class="muted"></div>
+      </div>
+
+      <div id="info-section" style="display: none;">
+        <div class="card">
+          <h2>Estado del CP</h2>
+          <div class="item"><span class="label">Estado</span><span class="value" id="estado">...</span></div>
+          <div class="item"><span class="label">Monitor</span><span class="value" id="monitor_ok">...</span></div>
+          <div class="item"><span class="label">Engine</span><span class="value" id="engine_ok">...</span></div>
+          <div class="item"><span class="label">Ubicación</span><span class="value" id="ubicacion">...</span></div>
+          <div class="item"><span class="label">Última actualización</span><span class="value" id="last_ts">...</span></div>
+        </div>
+        <br/>
+        <div class="card">
+          <h2>Cambiar ubicación</h2>
+          <label class="label">Nueva ubicación</label>
+          <input type="text" id="new_location" placeholder="ej: Madrid, Barcelona, Ottawa" />
+          <div class="actions">
+            <button id="btn-change-location">Actualizar ubicación</button>
+          </div>
+          <div id="location-msg" class="muted"></div>
+        </div>
+        <br/>
+        <div class="card">
+          <h2>Dar de baja</h2>
+          <div class="actions">
+            <button id="btn-unregister" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">Dar de baja del Registry</button>
+          </div>
+          <div id="unregister-msg" class="muted"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function setPill(status, text) {
+      const pill = document.getElementById('status-pill');
+      pill.textContent = text;
+      pill.className = `pill ${status}`;
+    }
+
+    function formatState(state) {
+      if (!state) return 'desconocido';
+      return state.replace(/_/g, ' ');
+    }
+
+    async function loadState() {
+      try {
+        const res = await fetch('/api/monitor_state');
+        if (!res.ok) throw new Error('Error HTTP ' + res.status);
+        const data = await res.json();
+
+        // Mostrar/ocultar secciones según autenticación
+        const isAuthenticated = data.authenticated;
+        document.getElementById('card-registro').style.display = isAuthenticated ? 'none' : 'block';
+        document.getElementById('info-section').style.display = isAuthenticated ? 'block' : 'none';
+
+        if (isAuthenticated) {
+          document.getElementById('estado').textContent = formatState(data.estado);
+          document.getElementById('monitor_ok').textContent = data.monitor_ok ? 'OK' : 'KO';
+          document.getElementById('engine_ok').textContent = data.engine_ok ? 'OK' : 'KO';
+          document.getElementById('ubicacion').textContent = data.ubicacion || 'Desconocida';
+          
+          // Formatear fecha de forma más legible
+          const timestamp = data.ts || new Date().toISOString();
+          const date = new Date(timestamp);
+          const formattedDate = date.toLocaleString('es-ES', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+          });
+          document.getElementById('last_ts').textContent = formattedDate;
+
+          const overallOK = data.engine_ok && data.monitor_ok && data.estado !== 'desconectado';
+          if (overallOK) setPill('ok', 'Operativo');
+          else if (!data.engine_ok) setPill('bad', 'Engine caído');
+          else setPill('warn', 'Monitoreando...');
+        } else {
+          setPill('warn', 'No registrado');
+        }
+
+      } catch (e) {
+        setPill('bad', 'Sin conexión');
+        console.error(e);
+      }
+    }
+
+    async function changeLocation() {
+      const msg = document.getElementById('location-msg');
+      const newLoc = document.getElementById('new_location').value.trim();
+      if (!newLoc) { msg.textContent = 'Introduce una ubicación válida.'; return; }
+
+      try {
+        const res = await fetch('/api/monitor/location', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ location: newLoc })
+        });
+        const data = await res.json();
+        if (data.status === 'ok') {
+          msg.textContent = `✓ Ubicación actualizada a: ${newLoc}`;
+          msg.style.color = '#22c55e';
+          document.getElementById('new_location').value = '';
+          setTimeout(loadState, 300);
+        } else {
+          msg.textContent = `✗ Error: ${data.message || 'Error desconocido'}`;
+          msg.style.color = '#ef4444';
+        }
+      } catch (e) {
+        msg.textContent = `✗ Error conectando: ${e.message}`;
+        msg.style.color = '#ef4444';
+        console.error(e);
+      }
+    }
+
+    async function registerRegistry() {
+      const msg = document.getElementById('registry-msg');
+      const pwd = document.getElementById('pwd').value;
+      if (!pwd) { msg.textContent = 'Introduce una contraseña primero.'; return; }
+
+      try {
+        let res = await fetch('/api/registry/set_password', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: pwd })
+        });
+        let data = await res.json();
+        if (data.status !== 'ok') { msg.textContent = data.msg || 'Error de contraseña'; msg.style.color = '#ef4444'; return; }
+
+        msg.textContent = data.msg || 'Contraseña correcta. Registrando...';
+        msg.style.color = '#22c55e';
+
+        res = await fetch('/api/registry/register', { method: 'POST' });
+        data = await res.json();
+        if (data.status === 'ok') {
+          msg.textContent = 'Registrado y autenticado correctamente.';
+          msg.style.color = '#22c55e';
+          document.getElementById('pwd').value = '';
+          setTimeout(loadState, 300);
+        } else {
+          msg.textContent = data.msg || 'Error registrando/autenticando.';
+          msg.style.color = '#ef4444';
+        }
+      } catch (e) {
+        msg.textContent = `✗ Error conectando: ${e.message}`;
+        msg.style.color = '#ef4444';
+      }
+    }
+
+    async function unregisterRegistry() {
+      const msg = document.getElementById('unregister-msg');
+      try {
+        const res = await fetch('/api/registry/unregister', { method: 'POST' });
+        const data = await res.json();
+        if (data.status === 'ok') {
+          msg.textContent = '✓ Desconectado del registro correctamente.';
+          msg.style.color = '#22c55e';
+          setTimeout(() => {
+            msg.textContent = '';
+            loadState();
+          }, 1500);
+        } else {
+          msg.textContent = `✗ Error: ${data.msg || 'Error desconocido'}`;
+          msg.style.color = '#ef4444';
+        }
+      } catch (e) {
+        msg.textContent = `✗ Error conectando: ${e.message}`;
+        msg.style.color = '#ef4444';
+      }
+    }
+
+    document.getElementById('btn-change-location').addEventListener('click', changeLocation);
+    document.getElementById('btn-registry').addEventListener('click', registerRegistry);
+    document.getElementById('btn-unregister').addEventListener('click', unregisterRegistry);
+
+    loadState();
+    setInterval(loadState, 2000);
+  </script>
+</body>
+</html>

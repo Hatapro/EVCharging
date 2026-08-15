@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>EV_CP_Engine</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                padding: 20px;
+            }
+
+            .container {
+                max-width: 900px;
+                margin: 0 auto;
+            }
+
+            .card {
+                background: white;
+                border-radius: 12px;
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+                margin-bottom: 20px;
+                overflow: hidden;
+            }
+
+            .card-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 20px;
+                font-size: 1.2em;
+                font-weight: bold;
+            }
+
+            .card-body {
+                padding: 20px;
+            }
+
+            .info-grid {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 15px;
+                margin-bottom: 15px;
+            }
+
+            .info-item {
+                background: #f5f5f5;
+                padding: 12px;
+                border-radius: 8px;
+            }
+
+            .info-label {
+                font-size: 0.85em;
+                color: #666;
+                margin-bottom: 5px;
+            }
+
+            .info-value {
+                font-size: 1.2em;
+                font-weight: bold;
+                color: #333;
+            }
+
+            .status-badge {
+                display: inline-block;
+                padding: 8px 16px;
+                border-radius: 20px;
+                font-weight: bold;
+                font-size: 0.9em;
+            }
+
+            .status-badge.activo {
+                background: #c8e6c9;
+                color: #2e7d32;
+            }
+
+            .status-badge.disponible {
+                background: #4caf50;
+                color: white;
+            }
+
+            .status-badge.suministrando {
+                background: #c8e6c9;
+                color: #0f5213;
+            }
+
+            .status-badge.averiado {
+                background: #ffcdd2;
+                color: rgb(175, 40, 40);
+            }
+
+            .status-badge.out-of-order {
+                background: #ffe0b2;
+                color: #e65100;
+            }
+
+            .status-badge.desconectado {
+                background: #f5f5f5;
+                color: #666;
+            }
+
+            .status-badge.Out\ of\ order {
+                background: #ffe0b2;
+                color: #e65100;
+            }
+
+            .indicator-grid {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 15px;
+                margin-top: 15px;
+            }
+
+            .indicator-dot {
+                display: inline-block;
+                width: 10px;
+                height: 10px;
+                border-radius: 50%;
+                margin-right: 8px;
+            }
+
+            .indicator-dot.online {
+                background: #4caf50;
+            }
+
+            .indicator-dot.offline {
+                background: #f44336;
+            }
+
+            .indicator-label {
+                display: flex;
+                align-items: center;
+                padding: 10px;
+                background: #f9f9f9;
+                border-radius: 6px;
+                font-size: 0.95em;
+            }
+
+            .progress-bar {
+                width: 100%;
+                height: 24px;
+                background: #e0e0e0;
+                border-radius: 10px;
+                overflow: hidden;
+                margin: 10px 0;
+                border: 1px solid #ccc;
+            }
+
+            .progress-fill {
+                height: 100%;
+                background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+                width: 0%;
+                transition: width 0.3s ease;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-weight: bold;
+                font-size: 0.8em;
+            }
+
+            .supply-items {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 15px;
+            }
+
+            .supply-item {
+                background: #f0f0f0;
+                padding: 12px;
+                border-radius: 8px;
+                text-align: center;
+            }
+
+            .supply-label {
+                font-size: 0.8em;
+                color: #666;
+                margin-bottom: 5px;
+            }
+
+            .supply-value {
+                font-size: 1.4em;
+                font-weight: bold;
+                color: #333;
+            }
+
+            .button-grid {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+                margin-top: 15px;
+            }
+
+            button {
+                padding: 10px 16px;
+                border: none;
+                border-radius: 6px;
+                font-weight: bold;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                font-size: 0.9em;
+            }
+
+            button:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            }
+
+            button:active {
+                transform: translateY(0);
+            }
+
+            button:disabled {
+                background: #cccccc;
+                color: #666;
+                cursor: not-allowed;
+                transform: none;
+            }
+
+            .btn-averiar {
+                background: #f44336;
+                color: white;
+            }
+
+            .btn-averiar:hover {
+                background: #d32f2f;
+            }
+
+            .btn-resetear {
+                background: #2196f3;
+                color: white;
+            }
+
+            .btn-resetear:hover {
+                background: #1976d2;
+            }
+
+            .btn-desconectar {
+                background: #ff9800;
+                color: white;
+            }
+
+            .btn-desconectar:hover {
+                background: #f57c00;
+            }
+
+            .btn-delete-credentials {
+                background: #e91e63;
+                color: white;
+            }
+
+            .btn-delete-credentials:hover {
+                background: #c2185b;
+            }
+
+            .btn-terminar {
+                background: #f44336;
+                color: white;
+                width: 100%;
+            }
+
+            .btn-terminar:hover {
+                background: #d32f2f;
+            }
+
+            .modal-backdrop {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 1000;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .modal-backdrop.active {
+                display: flex;
+            }
+
+            .modal-box {
+                background: white;
+                padding: 30px;
+                border-radius: 12px;
+                box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+                max-width: 400px;
+                text-align: center;
+            }
+
+            .modal-title {
+                font-size: 1.4em;
+                font-weight: bold;
+                margin-bottom: 15px;
+                color: #333;
+            }
+
+            .modal-message {
+                font-size: 1em;
+                color: #666;
+                margin-bottom: 25px;
+            }
+
+            .modal-buttons {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+            }
+
+            .btn-aceptar {
+                background: #4caf50;
+                color: white;
+            }
+
+            .btn-aceptar:hover {
+                background: #388e3c;
+            }
+
+            .btn-denegar {
+                background: #f44336;
+                color: white;
+            }
+
+            .btn-denegar:hover {
+                background: #d32f2f;
+            }
+
+            .connection-status {
+                text-align: right;
+                padding: 10px;
+                font-size: 0.85em;
+                font-weight: bold;
+            }
+
+            .connection-status.online {
+                color: #4caf50;
+            }
+
+            .connection-status.offline {
+                color: #f44336;
+            }
+
+            .driver-list {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                gap: 12px;
+                margin-bottom: 15px;
+            }
+
+            .driver-item {
+                background: #f9f9f9;
+                border: 2px solid #e0e0e0;
+                border-radius: 8px;
+                padding: 12px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                text-align: center;
+            }
+
+            .driver-item:hover {
+                border-color: #667eea;
+                box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+            }
+
+            .driver-item.selected {
+                background: #667eea;
+                color: white;
+                border-color: #667eea;
+            }
+
+            .driver-id {
+                font-weight: bold;
+                font-size: 0.95em;
+            }
+
+            .input-group {
+                display: grid;
+                grid-template-columns: 1fr auto;
+                gap: 10px;
+                margin-bottom: 15px;
+            }
+
+            input {
+                padding: 10px;
+                border: 1px solid #ddd;
+                border-radius: 6px;
+                font-size: 1em;
+            }
+
+            input:focus {
+                outline: none;
+                border-color: #667eea;
+                box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            }
+
+            .btn-iniciar-suministro {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+            }
+
+            .btn-iniciar-suministro:hover:not(:disabled) {
+                background: linear-gradient(135deg, #5568d3 0%, #6a4190 100%);
+            }
+
+            @media (max-width: 600px) {
+                .info-grid,
+                .supply-items,
+                .button-grid {
+                    grid-template-columns: 1fr;
+                }
+
+                .modal-buttons {
+                    grid-template-columns: 1fr;
+                }
+
+                .driver-list {
+                    grid-template-columns: 1fr;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="alert-modal" class="modal-backdrop">
+                <div class="modal-box">
+                    <div class="modal-title">⚠️ Solicitud de Suministro</div>
+                    <div class="modal-message">
+                        Driver <strong id="alert-message">-</strong> solicita suministro
+                    </div>
+                    <div class="modal-buttons">
+                        <button class="btn-aceptar" onclick="acceptRequest()">✅ Aceptar</button>
+                        <button class="btn-denegar" onclick="rejectRequest()">❌ Denegar</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    ⚡ Punto de Recarga {{ cp_id }}
+                    <div class="connection-status" id="connection-status">● Conectando...</div>
+                </div>
+                <div class="card-body">
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-label">Ubicación</div>
+                            <div class="info-value" id="ubicacion-display">{{ ubicacion }}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Estado</div>
+                            <div id="estado-badge" class="status-badge desconectado">DESCONECTADO</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Driver Actual</div>
+                            <div class="info-value" id="driver-id">-</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Última Actualización</div>
+                            <div class="info-value" id="last-update" style="font-size: 0.9em;">-</div>
+                        </div>
+                    </div>
+
+                    <hr style="margin: 15px 0; border: none; border-top: 1px solid #e0e0e0;">
+
+                    <div style="margin-top: 15px;">
+                        <strong style="display: block; margin-bottom: 10px;">🔧 Estado de Componentes</strong>
+                        <div class="indicator-grid">
+                            <div class="indicator-label">
+                                <span class="indicator-dot offline" id="monitor-dot"></span>
+                                <span>Monitor: <span id="monitor-text">Desconectado</span></span>
+                            </div>
+                            <div class="indicator-label">
+                                <span class="indicator-dot offline" id="engine-dot"></span>
+                                <span>Engine: <span id="engine-text">Desconectado</span></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" id="driver-selection-card">
+                <div class="card-header">👤 Iniciar Suministro con Driver</div>
+                <div class="card-body">
+                    <div class="driver-list" id="driver-list">
+                        <div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #999;">
+                            Cargando drivers disponibles...
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <input type="number" id="kwh-input-direct" placeholder="kWh a suministrar" min="1" max="100" value="10">
+                        <button class="btn-iniciar-suministro" id="btn-iniciar-directo" onclick="iniciarSuministroDirecto()" disabled>
+                            ⚡ Iniciar Suministro
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" id="supply-info" style="display: none;">
+                <div class="card-header">⚡ Suministro en Progreso</div>
+                <div class="card-body">
+                    <div class="supply-items">
+                        <div class="supply-item">
+                            <div class="supply-label">Energía (kWh)</div>
+                            <div class="supply-value" id="energia-actual">0.00</div>
+                        </div>
+                        <div class="supply-item">
+                            <div class="supply-label">Objetivo: <span id="energia-objetivo">0</span></div>
+                            <div class="supply-value" id="importe-actual">0.00 €</div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 15px;">
+                        <strong style="font-size: 0.9em;">Progreso (<span id="progreso-pct">0</span>%)</strong>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progress-fill"></div>
+                        </div>
+                    </div>
+
+                    <button class="btn-terminar" id="btn-terminar" onclick="terminateSupply()">
+                        🛑 Terminar Suministro Manualmente
+                    </button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">📊 Suministro Total</div>
+                <div class="card-body">
+                    <div class="supply-items">
+                        <div class="supply-item">
+                            <div class="supply-label">Energía (kWh)</div>
+                            <div class="supply-value" id="energia-kwh">0.00</div>
+                        </div>
+                        <div class="supply-item">
+                            <div class="supply-label">Importe (€)</div>
+                            <div class="supply-value" id="importe-eur">0.00</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">🎛️ Control del Engine</div>
+                <div class="card-body">
+                    <div class="button-grid">
+                        <button class="btn-averiar" onclick="action('averiar')">⚠️ Averiar</button>
+                        <button class="btn-resetear" onclick="action('resetear')">🔄 Resetear</button>
+                        <button class="btn-desconectar" onclick="action('desconectar')">🔒 Desconectar</button>
+                        <button class="btn-delete-credentials" onclick="deleteCredentials()">🗑️ Alterar clave</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            const CP_ID = "{{ cp_id }}";
+            const UBICACION = "{{ ubicacion }}";
+            let cpState = {};
+            let driversDisponibles = {};
+            let driverSeleccionado = null;
+
+            // Funcion para actualizar el estado de la conexion
+            function updateConnection(online) {
+                const status = document.getElementById('connection-status');
+
+                if (online) {
+                    status.textContent = '✅ Conectado';
+                    status.className = 'connection-status online';
+
+                } else {
+                    status.textContent = '❌ Desconectado';
+                    status.className = 'connection-status offline';
+                }
+            }
+
+            // Funcion para mostrar alerta de solicitud de suministro
+            function showSolicitudAlert(driver) {
+                document.getElementById('alert-message').textContent = driver || 'Desconocido';
+                document.getElementById('alert-modal').classList.add('active');
+            }
+
+            // Funcion para actualizar la interfaz de usuario
+            function updateUI() {
+                const estado = cpState.estado || 'desconectado';
+                const suministrando = cpState.suministrando || false;
+                const estadoBadge = document.getElementById('estado-badge');
+                estadoBadge.textContent = estado.replace(/_/g, ' ').toUpperCase();
+                const estadoClass = estado.replace(/\s+/g, '-').toLowerCase();
+                estadoBadge.className = `status-badge ${estadoClass}`;
+                document.getElementById('driver-id').textContent = cpState.driver_id || '-';
+                
+                // Formatear fecha de forma más legible
+                if (cpState.last_update) {
+                    const date = new Date(cpState.last_update);
+                    const formattedDate = date.toLocaleString('es-ES', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                    });
+                    document.getElementById('last-update').textContent = formattedDate;
+                } else {
+                    document.getElementById('last-update').textContent = '-';
+                }
+                
+                // Mostrar ubicación actualizada
+                if (cpState.ubicacion) {
+                    document.getElementById('ubicacion-display').textContent = cpState.ubicacion;
+                }
+                const monitorDot = document.getElementById('monitor-dot');
+                const monitorText = document.getElementById('monitor-text');
+                monitorDot.className = cpState.monitor_ok ? 'indicator-dot online' : 'indicator-dot offline';
+                monitorText.textContent = cpState.monitor_ok ? 'Conectado' : 'Desconectado';
+                const engineDot = document.getElementById('engine-dot');
+                const engineText = document.getElementById('engine-text');
+                engineDot.className = cpState.engine_ok ? 'indicator-dot online' : 'indicator-dot offline';
+                engineText.textContent = cpState.engine_ok ? 'Funcionando' : 'Error';
+                
+                // Bloquear acciones si está desconectado o bloqueado por clima
+                const weatherBlocked = cpState.weather_blocked || false;
+                const isDesconectado = estado === 'desconectado';
+                const actionsDisabled = weatherBlocked || isDesconectado;
+                
+                // Deshabilitar botones de control
+                document.querySelectorAll('.btn-averiar, .btn-desconectar, .btn-resetear').forEach(btn => {
+                    btn.disabled = actionsDisabled;
+                });
+                
+                // Deshabilitar inicio de suministro si está bloqueado
+                if (actionsDisabled) {
+                    document.getElementById('btn-iniciar-directo').disabled = true;
+                }
+                
+                const driverCard = document.getElementById('driver-selection-card');
+
+                if (suministrando)
+                    driverCard.style.display = 'none';
+
+                else
+                    driverCard.style.display = 'block';
+                const supplyInfo = document.getElementById('supply-info');
+
+                if (suministrando) {
+                    supplyInfo.style.display = 'block';
+                    document.getElementById('energia-actual').textContent = (cpState.energia_kwh || 0).toFixed(2);
+                    document.getElementById('energia-objetivo').textContent = (cpState.energia_objetivo || 0).toFixed(2);
+                    document.getElementById('importe-actual').textContent = (cpState.importe_eur || 0).toFixed(2) + ' €';
+                    const progreso = cpState.porcentaje ? cpState.porcentaje.toFixed(1) : 0;
+                    document.getElementById('progreso-pct').textContent = Math.round(progreso);
+                    document.getElementById('progress-fill').style.width = progreso + '%';
+                    document.getElementById('progress-fill').textContent = Math.round(progreso) + '%';
+                }
+
+                else {
+                    supplyInfo.style.display = 'none';
+                    document.getElementById('progress-fill').style.width = '0%';
+                    document.getElementById('progress-fill').textContent = '';
+                }
+                document.getElementById('energia-kwh').textContent = (cpState.kwh_totales || 0).toFixed(2);
+                document.getElementById('importe-eur').textContent = (cpState.importe_total || 0).toFixed(2);
+
+                if (cpState.alerta_solicitud)
+                    showSolicitudAlert(cpState.alerta_solicitud_driver);
+                else
+                    document.getElementById('alert-modal').classList.remove('active');
+                
+                // Actualizar lista de drivers cuando cambie el estado (especialmente weather_blocked)
+                updateDriversList();
+            }
+
+            // Funcion para obtener el estado del CP
+            function fetchCPState() {
+                fetch('/api/cp_state')
+                    .then(r => r.json())
+                    .then(data => {
+                        cpState = data;
+                        updateUI();
+                        updateConnection(true);
+                    })
+                    .catch(e => {
+                        console.error('Error:', e);
+                        updateConnection(false);
+                    });
+            }
+
+            // Funcion para seleccionar un driver
+            function seleccionarDriver(driverId) {
+                driverSeleccionado = driverId;
+                document.querySelectorAll('.driver-item').forEach(el => {
+                    el.classList.remove('selected');
+                });
+                event.target.closest('.driver-item').classList.add('selected');
+                document.getElementById('btn-iniciar-directo').disabled = false;
+            }
+
+            // Funcion para actualizar la lista de drivers disponibles
+            function updateDriversList() {
+                const list = document.getElementById('driver-list');
+                
+                // Si está bloqueado por clima, no mostrar drivers
+                if (cpState.weather_blocked) {
+                    list.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #ff9800; font-weight: bold;">❄️ CP bloqueado por condiciones climáticas adversas</div>';
+                    document.getElementById('btn-iniciar-directo').disabled = true;
+                    return;
+                }
+                
+                if (Object.keys(driversDisponibles).length === 0) {
+                    list.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #999;">No hay drivers libres disponibles</div>';
+                    return;
+                }
+                list.innerHTML = '';
+                Object.values(driversDisponibles).forEach(driver => {
+                    const div = document.createElement('div');
+                    div.className = `driver-item ${driverSeleccionado === driver.driver_id ? 'selected' : ''}`;
+                    div.onclick = () => seleccionarDriver(driver.driver_id);
+                    div.innerHTML = `
+                        <div class="driver-id">${driver.driver_id}</div>
+                    `;
+                    list.appendChild(div);
+                });
+            }
+
+            // Funcion para obtener la lista de drivers disponibles
+            function fetchDrivers() {
+                fetch('/api/drivers')
+                    .then(r => r.json())
+                    .then(data => {
+                        driversDisponibles = data.drivers || {};
+                        updateDriversList();
+                    })
+                    .catch(e => console.error('Error fetching drivers:', e));
+            }
+
+            // Funcion para iniciar suministro directo
+            function iniciarSuministroDirecto() {
+                if (!driverSeleccionado) {
+                    alert('Por favor selecciona un driver');
+                    return;
+                }
+
+                if (cpState.suministrando) {
+                    alert('Ya hay un suministro en progreso');
+                    return;
+                }
+                const kwh = parseFloat(document.getElementById('kwh-input-direct').value) || 10;
+                fetch('/api/action', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        action: 'iniciar_suministro_directo',
+                        driver_id: driverSeleccionado,
+                        kwh: kwh
+                    })
+                })
+                .then(r => r.json())
+                .then(data => {
+
+                    if (data.status === 'ok') {
+                        console.log('✅ Suministro directo iniciado');
+                        driverSeleccionado = null;
+                        document.getElementById('btn-iniciar-directo').disabled = true;
+                        fetchCPState();
+                    }
+
+                    else
+                        alert('Error: ' + (data.msg || 'No se pudo iniciar el suministro'));
+                })
+                .catch(e => {
+                    console.error('Error:', e);
+                    alert('Error al iniciar suministro');
+                });
+            }
+
+            // Funcion para aceptar solicitud de suministro
+            function acceptRequest() {
+                fetch('/api/action', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({action: 'aceptar_solicitud'})
+                }).then(() => {
+                    document.getElementById('alert-modal').classList.remove('active');
+                    fetchCPState();
+                });
+            }
+
+            // Funcion para denegar solicitud de suministro
+            function rejectRequest() {
+                fetch('/api/action', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({action: 'denegar_solicitud'})
+                }).then(() => {
+                    document.getElementById('alert-modal').classList.remove('active');
+                    fetchCPState();
+                });
+            }
+
+            // Funcion para terminar suministro
+            function terminateSupply() {
+                fetch('/api/action', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({action: 'terminar_suministro'})
+                }).then(() => fetchCPState());
+            }
+
+            // Funcion para acciones del engine
+            function action(cmd) {
+                const actions = {
+                    'averiar': 'averiar',
+                    'resetear': 'resetear',
+                    'desconectar': 'desconectar'
+                };
+
+                fetch('/api/action', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({action: actions[cmd]})
+                }).then(() => fetchCPState());
+            }
+            // Función para eliminar credenciales
+            function deleteCredentials() {
+                if (!confirm('⚠️ ¿Estás seguro?\n\nEsto alterará completamente la clave del CP.\nEl CP se desconectará y deberás volver a registrarlo\n\n¿Continuar?')) {
+                    return;
+                }
+
+                fetch('/api/credentials/delete', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'ok') {
+                        alert('✅ ' + data.message);
+                        fetchCPState();
+                    } else {
+                        alert('❌ Error: ' + data.message);
+                    }
+                })
+                .catch(e => {
+                    alert('❌ Error: ' + e);
+                    console.error('Error alterando la clave:', e);
+                });
+            }
+            fetchCPState();
+            fetchDrivers();
+            
+            setInterval(fetchCPState, 500);
+            setInterval(fetchDrivers, 1000);
+        </script>
+    </body>
+</html>
